@@ -1,5 +1,6 @@
 import { ref} from 'vue'
 import { defineStore } from 'pinia'
+import { fetchTodos as fetchTodosApi, createTodo, updateTodo, toggleTodo as toggleTodoApi, deleteTodo } from '@/api/todos'
 export interface Todo {
   id: number
   text: string
@@ -8,25 +9,44 @@ export interface Todo {
 export const useTodoStore = defineStore('todo', () => {
 const todos = ref<Todo[]>([])
 const newTodoText = ref('')
-let nextId = 1
+const errorMsg=ref('')
 
-function addTodo(){
+
+async function addTodo(){
     const text = newTodoText.value.trim()
     if(text){
-        todos.value.push({
-            id: nextId++,
-            text:text,
-            completed: false
-        })
-        newTodoText.value = ''
+        try{
+            const newTodo=await createTodo({text})
+            todos.value.push(newTodo)
+            newTodoText.value = ''
+        }catch(err){
+            errorMsg.value='Failed to create todo'
+        }
+      
     }
 }
 
-function removeTodo(id: number){
-    todos.value = todos.value.filter(todo => todo.id !== id)
+async function removeTodo(id: number){
+    try{
+        await deleteTodo(id)
+        todos.value = todos.value.filter(todo => todo.id !== id)
+    }catch(err){
+        errorMsg.value='Failed to delete todo'
+    }
 }
-function toggleTodo(todo:Todo){
-    todo.completed = !todo.completed
+async function toggleTodo(todo:Todo){
+    const updated=await toggleTodoApi(todo.id)
+    const index=todos.value.findIndex(t=>t.id==todo.id)
+    if(index !== -1){
+        todos.value[index] = updated
+    }
 }
-return {todos, newTodoText, addTodo, removeTodo, toggleTodo}
+async function fetchTodos(){
+    try{
+        todos.value=await fetchTodosApi()
+    }catch(err){
+        errorMsg.value='Failed to fetch todos'
+    }
+}
+return {todos, newTodoText, addTodo, removeTodo, toggleTodo, fetchTodos,errorMsg}
 })

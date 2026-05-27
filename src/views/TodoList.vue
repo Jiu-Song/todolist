@@ -3,16 +3,27 @@ import{useTodoStore,type Todo} from '@/stores/todo'//为什么要引入type
 import TodoItem from '@/components/TodoItem.vue'
 import { useParticles } from '@/composables/useParticles'
 import { useConfetti } from '@/composables/useConfetti'
-
+import {onMounted} from 'vue'
 const todoStore = useTodoStore()
 const { particleCanvas } = useParticles()
-const { confettiCanvas, triggerConfetti } = useConfetti() //9-10这两段代码什么意思
+const { confettiCanvas, triggerConfetti } = useConfetti() //8-9这两段代码什么意思
 
 
 
-function handleToggle(todo:Todo){
-    todoStore.toggleTodo(todo)
-        if(todo.completed){
+//toggleTodo 现在是 async 的，调 API 需要时间。
+// if (todo.completed) 在 API 返回之前就执行了，判断的是旧值。
+// 实际效果是反的——勾选完成时不放彩带，取消完成时反而放。
+//修复： 等 API 返回后再判断：
+// function handleToggle(todo:Todo){
+//     todoStore.toggleTodo(todo)
+//         if(todo.completed){
+//             triggerConfetti()
+//         }
+//     }
+async function handleToggle(todo:Todo){
+    await todoStore.toggleTodo(todo)
+    const updated=todoStore.todos.find(t=>t.id===todo.id)
+        if(updated&&updated.completed){
             triggerConfetti()
         }
     }
@@ -22,6 +33,10 @@ function handleDelete(id:number){
 }
 
 // ==================== 生命周期 ====================
+onMounted(() => {
+  // 组件挂载后执行的逻辑
+  todoStore.fetchTodos() // 获取待办事项列表
+})
 
 </script>
 
@@ -50,7 +65,7 @@ function handleDelete(id:number){
       />
       <button class="add-btn" @click="todoStore.addTodo">添加</button>
     </div>
-
+    <p v-if="todoStore.errorMsg" class="error-msg">{{ todoStore.errorMsg }}</p>
     <!-- 待办列表 -->
     <ul class="todo-list">
       <TransitionGroup name="todo">
@@ -176,6 +191,14 @@ function handleDelete(id:number){
 
 .add-btn:active {
   transform: translateY(0);
+}
+
+/* ========== 错误提示 ========== */
+.error-msg {
+  margin: 0 0 16px;
+  color: #ff6b6b;
+  font-size: 14px;
+  text-align: center;
 }
 
 /* ========== 待办列表 ========== */

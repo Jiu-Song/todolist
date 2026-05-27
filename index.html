@@ -8,6 +8,11 @@
   </head>
   <body>
     <div id="app"></div>
-    <script type="module" src="/src/main.ts"></script>
+    <script type="module" src="/src/main.ts">
+      function isAuthenticated() {
+        // 这里应该有实际的认证逻辑，比如检查 token 是否存在且有效
+        return !!localStorage.getItem('token')
+      }
+    </script>
   </body>
 </html>
